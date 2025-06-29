@@ -100,18 +100,40 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// get aspect ratio
+	ar, err := getVideoAspectRatio(newFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get video Aspect Ratio", err)
+		return
+	}
+
+	// process file
+	processed, err := processVideoForFastStart(newFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't process video", err)
+		return
+	}
+
+	processedFile, err := os.Open(processed)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't open process video", err)
+		return
+	}
+	defer os.Remove(processed)
+	defer processedFile.Close()
+
 	// create file name
 	randomBytes := make([]byte, 32)
 	rand.Read(randomBytes)
 
 	encoded := base64.RawURLEncoding.EncodeToString(randomBytes)
 
-	key := fmt.Sprintf("%s.mp4", encoded)
+	key := fmt.Sprintf("%s/%s.mp4", ar, encoded)
 
 	params := s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &key,
-		Body:        newFile,
+		Body:        processedFile,
 		ContentType: &mediaType,
 	}
 

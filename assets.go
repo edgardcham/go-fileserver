@@ -57,12 +57,25 @@ func getVideoAspectRatio(filePath string) (string, error) {
 	ratio := float64(width) / float64(height)
 
 	if ratio >= 16.0/9.0-0.1 && ratio <= 16.0/9.0+0.1 {
-		return "16:9", nil
+		return "landscape", nil
 	}
 
 	if ratio >= 9.0/16.0-0.1 && ratio <= 9.0/16.0+0.1 {
-		return "9:16", nil
+		return "portrait", nil
 	}
 
 	return "other", nil
+}
+
+func processVideoForFastStart(filePath string) (string, error) {
+	outputFilePath := filePath + ".processing"
+
+	cmd := exec.Command("ffmpeg", "-i", filePath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputFilePath)
+
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("error running fast start command")
+	}
+
+	return outputFilePath, nil
 }
